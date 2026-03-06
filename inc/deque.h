@@ -62,3 +62,6 @@ uthread_t *steal(Deque *q);
 
 // Push a uthread onto the bottom of the deque
 void push(Deque *q, uthread_t *new);
+
+// Clean up
+void deque_free(Deque* q);

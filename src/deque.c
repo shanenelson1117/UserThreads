@@ -57,6 +57,7 @@ void array_free(Array *a)
   if (a->previous)
     array_free(a->previous);
   
+  free(a->buffer);
   free(a);
 }
 
@@ -124,5 +125,13 @@ uthread_t *pop(Deque *q)
   } else {
     atomic_store_explicit(&q->bottom, b + 1, memory_order_relaxed);
     return NULL;
+  }
+}
+
+void deque_free(Deque *q)
+{ 
+  if (q != NULL) {
+    array_free(q->array);
+    free(q);
   }
 }
