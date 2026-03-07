@@ -44,3 +44,7 @@ typedef struct {
 typedef struct {
   uthread_t *head, *tail;
 } uthread_queue;
+
+uthread_t *dequeue(uthread_queue *q);
+
+void enqueue(uthread_queue *q, uthread_t *t);
