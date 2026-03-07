@@ -18,3 +18,8 @@ void unlock(spinlock* lk)
 {
   atomic_store_explicit(&lk->locked, false, memory_order_release);
 }
+
+void lock_init(spinlock *lk) {
+    // Not in contention
+    atomic_store_explicit(&lk->locked, false, memory_order_relaxed);
+}

@@ -50,18 +50,19 @@ void array_free(Array* a);
 // Deque functions
 // ------------------------
 
+/// @brief initialize deque.
 Deque *deque_init(workload_size size);
 
-// Take a uthread from the bottom of the deque
+/// @brief Take a uthread from the bottom of the deque.
 // Used by threads to take from their own deque
 uthread_t *pop(Deque *q);
 
-// Take a thread from the top of the deque
+/// @brief Take a thread from the top of the deque.
 // Used by threads to steal from other threads deques
 uthread_t *steal(Deque *q);
 
-// Push a uthread onto the bottom of the deque
+/// @brief Push a uthread onto the bottom of the deque.
 void push(Deque *q, uthread_t *new);
 
-// Clean up
+/// @brief Clean up deque resources.
 void deque_free(Deque* q);

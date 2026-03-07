@@ -38,3 +38,9 @@ typedef struct {
   sched_priority priority;
   char name[16];
 } uthread_info;
+
+
+// Internal queue used by syncprimitives
+typedef struct {
+  uthread_t *head, *tail;
+} uthread_queue;
