@@ -4,8 +4,6 @@
 
 #include <stdlib.h>
 
-
-
 void condvar_notify_one(condvar *cv)
 {
   lock(&cv->lk);

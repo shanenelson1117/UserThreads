@@ -16,16 +16,6 @@ uthreads.
 /// reenqueue onto ready queue.
 void block();
 
-/// @brief Call after having been put onto
-/// a sync primitive's wait queue, or when waiting
-/// on blocked io. Sets process state to BLOCKED
-/// and schedules next kthread. Does not
-/// reenqueue onto ready queue. Unlocks the lk
-/// provided.
-/// @param lk Lock to unlock while blocking.
-void block_unlock(spinlock *lk);
-
-
 /// @brief voluntarily release kthread
 /// to work on another uthread. Sets process to 
 /// READY and reenqueues on the ready queue for the 

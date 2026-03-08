@@ -3,6 +3,8 @@
 #include "spinlock.h"
 #include "uthread.h"
 
+extern __thread int worker_idx;
+extern __thread uthread_t *current_uthread;
 
 typedef struct {
   uint32_t count;
@@ -17,10 +19,10 @@ typedef struct {
 /// @param limit Number of accessers to allow.
 void semaphore_init(semaphore *s, uint32_t limit);
 
-/// @brief 
-/// @param s 
+/// @brief Unlock the semaphore.
+/// @param s Semaphore to lock.
 void semaphore_up(semaphore *s);
 
-/// @brief 
-/// @param s 
+/// @brief Lock the semaphore.
+/// @param s Semaphore to lock.
 void semaphore_down(semaphore *s);

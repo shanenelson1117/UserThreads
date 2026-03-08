@@ -40,7 +40,7 @@ typedef struct {
 } uthread_info;
 
 
-// Internal queue used by syncprimitives
+// Internal queue used by sync primitives
 typedef struct {
   uthread_t *head, *tail;
 } uthread_queue;
