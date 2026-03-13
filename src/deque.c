@@ -1,8 +1,7 @@
 #include "deque.h"
 #include "uthread.h"
+
 #include <unistd.h>
-
-
 #include <stdatomic.h>
 
 // ------------------------

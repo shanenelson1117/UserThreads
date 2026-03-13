@@ -20,8 +20,8 @@ typedef struct {
 /// @param b Barrier to initialize.
 /// @param limit Number of threads that are included in
 /// barrier group.
-void barrier_init(barrier* b, uint32_t limit);
+void barrier_init(barrier *b, uint32_t limit);
 
 /// @brief Block until all threads have called
 /// `barrier_wait()`
-void barrier_wait(barrier* b);
+void barrier_wait(barrier *b);

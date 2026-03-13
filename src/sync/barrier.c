@@ -6,7 +6,7 @@
 #include "barrier.h"
 #include "schedule.h"
 
-barrier_wait(barrier* b)
+void barrier_wait(barrier* b)
 {
   lock(&b->lk);
   b->count++;
@@ -30,7 +30,7 @@ barrier_wait(barrier* b)
   }
 }
 
-barrier_init(barrier* b, uint32_t limit)
+void barrier_init(barrier* b, uint32_t limit)
 { 
   lock_init(&b->lk);
   b->limit = limit;

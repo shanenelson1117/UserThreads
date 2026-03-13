@@ -5,18 +5,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <uthread.h>
+#include "uthread.h"
 
 /*
 Credit to Lê et al for their correctness-verified implementation
 of the Chase-Lev deque, see: 
 https://dl.acm.org/doi/10.1145/2442516.2442524
 */
-typedef struct {
-  size_t size;
-  Array *previous;
-  _Atomic (uthread_t *) *buffer;
-} Array;
+typedef struct Array Array;
+
+struct Array {
+    size_t size;
+    Array *previous;
+    _Atomic(uthread_t *) *buffer;
+};
 
 typedef struct {
   atomic_size_t top, bottom;

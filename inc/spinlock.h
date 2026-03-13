@@ -2,6 +2,9 @@
 
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <sigset_t.h>
 
 typedef struct {
   _Atomic bool locked;

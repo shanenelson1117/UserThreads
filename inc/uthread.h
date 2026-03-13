@@ -1,6 +1,6 @@
 #pragma once
-#include "stdint.h"
-#include "stdbool.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 typedef enum {
   READY,
@@ -21,16 +21,6 @@ typedef enum {
   STACK_LARGE  =    8 * 1024 * 1024,   // 8MB
 } stack_size;
 
-typedef struct {
-  void* sp;           // Saved stack pointer
-  void  *f, *args;    // f pointer and args for computation
-  thread_state state; // State for uthread
-  uint64_t *stack;    // Stack for this uthread
-  uthread_t *next;    // For sync primitive wait lists
-  uthread_info *info  // Per thread config
-} uthread_t;
-
-
 // Used to configure per thread metadata
 typedef struct {
   stack_size ssize;
@@ -39,6 +29,14 @@ typedef struct {
   char name[16];
 } uthread_info;
 
+typedef struct uthread {
+  void *sp;
+  void *f, *args;
+  thread_state state;
+  unsigned long *stack;
+  struct uthread *next;  // use struct tag not typedef
+  uthread_info *info;
+} uthread_t;
 
 // Internal queue used by sync primitives
 typedef struct {
