@@ -1,16 +1,13 @@
 #pragma once
-#include <sigset_t.h>
 #include <signal.h>
-#include <sigaction.h>
 #include <stdlib.h>
 
+#include "uthread.h"
 
-extern __thread sigset_t mask_stack[32];
-extern __thread int mask_depth;          // Init to 0 in worker startup func
 
-void push_mask(void);
+void push_mask(uthread_t *t);
 
-void pop_mask(void);
+void pop_mask(uthread_t *t);
 
 void enable_sigprof(void);
 

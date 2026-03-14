@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
+#include <signal.h>
 
 typedef enum {
   READY,
@@ -34,8 +35,10 @@ typedef struct uthread {
   void *f, *args;
   thread_state state;
   unsigned long *stack;
-  struct uthread *next;  // use struct tag not typedef
+  struct uthread *next;     // use struct tag not typedef
   uthread_info *info;
+  sigset_t mask_stack[32];  // stack of interrrupt status per uthread
+  int mask_depth;           // ptr into stack
 } uthread_t;
 
 // Internal queue used by sync primitives
