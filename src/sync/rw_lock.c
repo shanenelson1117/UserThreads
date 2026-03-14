@@ -21,7 +21,7 @@ void read_unlock(rw_lock* rw)
 {
   mutex_lock(&rw->rc_lock);
   rw->read_count--;
-  // If we're the last reader, give up control to possible writers.
+  // If we're the last reader, give up control to possible writer.
   if (rw->read_count == 0)
     mutex_unlock(&rw->exclusive);
   mutex_unlock(&rw->rc_lock);

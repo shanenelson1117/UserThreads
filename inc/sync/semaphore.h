@@ -7,8 +7,8 @@ extern __thread int worker_idx;
 extern __thread uthread_t *current_uthread;
 
 typedef struct {
-  uint32_t count;
-  uint32_t limit;
+  int count;
+  int limit;
   uthread_queue q;
   spinlock lk;
 } semaphore;
@@ -17,7 +17,7 @@ typedef struct {
 /// accessers.
 /// @param s Semaphore to initialize.
 /// @param limit Number of accessers to allow.
-void semaphore_init(semaphore *s, uint32_t limit);
+void semaphore_init(semaphore *s, int limit);
 
 /// @brief Unlock the semaphore.
 /// @param s Semaphore to lock.

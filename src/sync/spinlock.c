@@ -9,13 +9,14 @@ void lock(spinlock* lk)
   push_mask(current_thread);
 
   bool wanted = false;
+  // Just TAS, but explicit for non-TSO archs
   while (!atomic_compare_exchange_strong_explicit(&lk->locked, &wanted, true,
                                                   memory_order_acquire,
                                                   memory_order_relaxed)) {
     wanted = false;
-    enable_sigprof();
+    pop_mask(current_thread);
     _mm_pause();
-    disable_sigprof();
+    push_mask(current_thread);
   }
 }
 

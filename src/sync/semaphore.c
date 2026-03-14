@@ -1,7 +1,7 @@
 #include "semaphore.h"
-#include <stdint.h>
+#include <stddef.h>
 
-void semaphore_init(semaphore *s, uint32_t limit)
+void semaphore_init(semaphore *s, int limit)
 {
   lock_init(&s->lk);
   s->count = 0;
