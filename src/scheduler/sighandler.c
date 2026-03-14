@@ -1,13 +1,10 @@
 #include "sighandler.h"
 #include "uthread.h"
 
-extern __thread sigset_t mask_stack[32];
-extern __thread int mask_depth;
-
 void push_mask(uthread_t* t)
 {
     // Save current mask onto stack
-    pthread_sigmask(0, 0, &t->mask_stack[mask_depth++]);
+    pthread_sigmask(0, 0, &t->mask_stack[t->mask_depth++]);
     
     // Block SIGPROF
     disable_sigprof();
@@ -16,7 +13,7 @@ void push_mask(uthread_t* t)
 void pop_mask(uthread_t* t)
 {
     // Restore previous mask
-    pthread_sigmask(SIG_SETMASK, &t->mask_stack[--mask_depth], 0);
+    pthread_sigmask(SIG_SETMASK, &t->mask_stack[--t->mask_depth], 0);
 }
 
 void enable_sigprof(void)

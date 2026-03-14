@@ -1,6 +1,7 @@
 #pragma once
 #include <signal.h>
 #include <stdlib.h>
+#include <sigaction.h>
 
 #include "uthread.h"
 

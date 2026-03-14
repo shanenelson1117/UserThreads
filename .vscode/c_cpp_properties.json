@@ -4,8 +4,11 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
+                "${workspaceFolder}/inc/sync",
+                "${workspaceFolder}/inc/scheduler",
                 "${workspaceFolder}/inc",
-                "/usr/include"
+                "/usr/include",
+                "/usr/include/bits"
             ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c17"
