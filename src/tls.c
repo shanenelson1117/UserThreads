@@ -4,5 +4,7 @@
 #include "sighandler.h"
 #include "uthread.h"
 
-__thread int worker_idx;
-__thread uthread_t *current_uthread;
+#include <stddef.h>
+
+__thread int worker_idx = 0;
+__thread uthread_t *current_uthread = NULL;

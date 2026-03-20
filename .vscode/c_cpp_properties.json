@@ -3,15 +3,14 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/inc/sync",
                 "${workspaceFolder}/inc/scheduler",
+                "${workspaceFolder}/inc/sync",
                 "${workspaceFolder}/inc",
                 "/usr/include",
                 "/usr/include/bits"
             ],
             "compilerPath": "/usr/bin/gcc",
-            "cStandard": "c17"
+            "cStandard": "c11"
         }
     ],
     "version": 4

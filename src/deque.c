@@ -1,8 +1,9 @@
-#include "deque.h"
-#include "uthread.h"
-
 #include <unistd.h>
 #include <stdatomic.h>
+#include <confname.h>
+
+#include "deque.h"
+#include "uthread.h"
 
 // ------------------------
 // Internal Array Functions
