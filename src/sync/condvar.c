@@ -30,8 +30,7 @@ void condvar_wait(condvar *cv, mutex *m)
   lock(&cv->lk);
   enqueue(&cv->q, current_uthread);
   mutex_unlock(m);
-  unlock(&cv->lk);
-  block();
+  block(&cv->lk);
 }
 
 void condvar_init(condvar* cv)

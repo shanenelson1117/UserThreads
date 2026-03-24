@@ -25,8 +25,7 @@ void barrier_wait(barrier* b)
   } else {
     enqueue(&b->q, current_uthread);
     // Schedule a different thread
-    unlock(&b->lk);
-    block();
+    block(&b->lk);
   }
 }
 

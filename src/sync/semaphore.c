@@ -14,9 +14,8 @@ void semaphore_down(semaphore *s)
   lock(&s->lk);
 
   while (s->count == s->limit) {
-    unlock(&s->lk);
     enqueue(&s->q, current_uthread);
-    block();
+    block(&s->lk);
     lock(&s->lk);
   }
   s->count++;

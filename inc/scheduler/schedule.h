@@ -3,6 +3,9 @@
 #include "uthread.h"
 #include "spinlock.h"
 
+extern __thread int worker_idx;
+extern __thread uthread_t *current_uthread;
+
 /*
 This header contains the API that sync primitives and 
 the IO loop will use to control the scheduling of
@@ -13,8 +16,9 @@ uthreads.
 /// a sync primitive's wait queue, or when waiting
 /// on blocked io. Sets process state to BLOCKED
 /// and schedules next kthread. Does not
-/// reenqueue onto ready queue.
-void block();
+/// reenqueue onto ready queue. Unlocks the 
+/// passed in lock before relinquishing control.
+void block(spinlock *lk);
 
 /// @brief voluntarily release kthread
 /// to work on another uthread. Sets process to 
