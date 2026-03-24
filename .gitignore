@@ -1,0 +1,37 @@
+# Build artifacts
+*.o
+*.a
+*.so
+*.out
+
+# Executables
+uthread
+
+# Compiled assembly
+*.s
+
+# Debug files
+*.dSYM/
+core
+core.*
+
+# VSCode
+.vscode/
+
+# Editor swap files
+*.swp
+*.swo
+*~
+\#*\#
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Dependency files
+*.d
+
+# Test output
+test_output/
+*.log
