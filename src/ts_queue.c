@@ -11,7 +11,7 @@ void injector_push(uthread_t *t)
   if (q->count == q->size) {
     // Full, grow array
     uthread_t **new_array = malloc(q->size * 2 * sizeof(uthread_t *));
-    for (size_t i = 0; i < q->count; i++) {
+    for (int i = 0; i < q->count; i++) {
         new_array[i] = q->array[(q->bottom + i) % q->size];
     }
     free(q->array);

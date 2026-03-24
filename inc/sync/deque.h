@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "inc/uthread.h"
+#include "inc/internals/uthread_internal.h"
 
 /*
 Bounded lock-free deque.

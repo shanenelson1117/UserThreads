@@ -1,4 +1,4 @@
-#include "mutex.h"
+#include "inc/internals/uthread_internal.h"
 
 void mutex_init(mutex *m)
 {

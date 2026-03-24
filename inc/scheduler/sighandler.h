@@ -3,15 +3,10 @@
 #include <stdlib.h>
 #include <sigaction.h>
 
-#include "uthread.h"
+#include "inc/internals/uthread_internal.h"
 
-extern __thread uthread_t *current_thread;
-
+extern __thread uthread_t *current_uthread;
 
 void push_mask();
 
 void pop_mask();
-
-void enable_sigprof(void);
-
-void disable_sigprof(void);

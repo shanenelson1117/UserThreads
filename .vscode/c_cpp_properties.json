@@ -2,16 +2,20 @@
     "configurations": [
         {
             "name": "Linux",
-            "includePath": [
-                "${workspaceFolder}/inc/scheduler",
-                "${workspaceFolder}/inc/sync",
-                "${workspaceFolder}/inc",
-                "/usr/include",
-                "/usr/include/bits",
-                "${workspaceFolder}"
-            ],
             "compilerPath": "/usr/bin/gcc",
-            "cStandard": "c11"
+            "cStandard": "c11",
+            "defines": [
+                "_GNU_SOURCE"
+            ],
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/inc",
+                "${workspaceFolder}/inc/sync",
+                "${workspaceFolder}/inc/scheduler",
+                "/usr/lib/gcc/x86_64-redhat-linux/14/include",
+                "/usr/local/include",
+                "/usr/include"
+            ]
         }
     ],
     "version": 4

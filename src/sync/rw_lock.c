@@ -1,4 +1,4 @@
-#include "rw_lock.h"
+#include "inc/internals/uthread_internal.h"
 
 void rw_lock_init(rw_lock *rw)
 {

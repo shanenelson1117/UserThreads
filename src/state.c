@@ -1,8 +1,8 @@
 /// All thread local state for worker
 /// threads in the thread pool
 
-#include "inc/uthread.h"
-#include "inc/runtime.h"
+#include "inc/internals/uthread_internal.h"
+#include "inc/internals/pool.h"
 
 #include <stddef.h>
 

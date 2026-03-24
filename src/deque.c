@@ -1,9 +1,8 @@
-#include <unistd.h>
+#include <stdint.h>
 #include <stdatomic.h>
 #include <confname.h>
 
 #include "inc/sync/deque.h"
-#include "inc/uthread.h"
 
 // ------------------------
 // Internal Array Functions
@@ -74,7 +73,7 @@ uthread_t *steal(deque* q)
   return x;
 }
 
-int push(Deque *q, uthread_t *x)
+int push(deque *q, uthread_t *x)
 {
   size_t b = atomic_load_explicit(&q->bottom, memory_order_relaxed);
   size_t t = atomic_load_explicit(&q->top, memory_order_acquire);

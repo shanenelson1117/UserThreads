@@ -1,7 +1,6 @@
 #pragma once
 
-#include "uthread.h"
-#include "spinlock.h"
+#include "inc/internals/uthread_internal.h"
 
 extern __thread int worker_idx;
 extern __thread uthread_t *current_uthread;
@@ -34,3 +33,7 @@ void yield();
 /// there is now work to do.
 /// @param t uthread to mark as ready.
 void mark_as_ready(uthread_t *t);
+
+/// Sync primitive queue operations
+uthread_t *dequeue(uthread_queue *q);
+void enqueue(uthread_queue *q, uthread_t *t);

@@ -1,6 +1,5 @@
-#include "spinlock.h"
-#include <stdatomic.h>
-#include "sighandler.h"
+#include "inc/scheduler/sighandler.h"
+#include "inc/internals/uthread_internal.h"
 
 void lock(spinlock* lk)
 { 

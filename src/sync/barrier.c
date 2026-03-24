@@ -1,10 +1,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "uthread.h"
-#include "spinlock.h"
-#include "barrier.h"
-#include "schedule.h"
+#include "inc/internals/uthread_internal.h"
+#include "inc/scheduler/schedule.h"
 
 void barrier_wait(barrier* b)
 {

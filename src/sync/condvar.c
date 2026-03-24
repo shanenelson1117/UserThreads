@@ -1,8 +1,8 @@
-#include "condvar.h"
-#include "schedule.h"
-#include "mutex.h"
+#include "inc/internals/uthread_internal.h"
+#include "inc/scheduler/schedule.h"
 
-#include <stdlib.h>
+#include <stddef.h>
+
 
 void condvar_notify_one(condvar *cv)
 {

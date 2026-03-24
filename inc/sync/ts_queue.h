@@ -3,10 +3,10 @@
 Injector queue. Thread-safe locking unbounded
 circular array.
 */
-#include "inc/uthread.h"
-#include "inc/runtime.h"
-
 #include <pthread.h>
+
+#include "inc/internals/uthread_internal.h"
+#include "inc/internals/pool.h"
 
 extern pool pool_state;
 

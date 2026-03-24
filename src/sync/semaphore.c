@@ -1,5 +1,7 @@
-#include "semaphore.h"
 #include <stddef.h>
+
+#include "inc/scheduler/schedule.h"
+#include "inc/internals/uthread_internal.h"
 
 void semaphore_init(semaphore *s, int limit)
 {
