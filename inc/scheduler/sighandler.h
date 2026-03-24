@@ -5,10 +5,12 @@
 
 #include "uthread.h"
 
+extern __thread uthread_t *current_thread;
 
-void push_mask(uthread_t *t);
 
-void pop_mask(uthread_t *t);
+void push_mask();
+
+void pop_mask();
 
 void enable_sigprof(void);
 

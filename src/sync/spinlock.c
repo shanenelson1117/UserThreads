@@ -2,11 +2,9 @@
 #include <stdatomic.h>
 #include "sighandler.h"
 
-extern __thread uthread_t *current_thread;
-
 void lock(spinlock* lk)
 { 
-  push_mask(current_thread);
+  push_mask();
 
   bool wanted = false;
   // Just TAS, but explicit for non-TSO archs
@@ -14,9 +12,9 @@ void lock(spinlock* lk)
                                                   memory_order_acquire,
                                                   memory_order_relaxed)) {
     wanted = false;
-    pop_mask(current_thread);
+    pop_mask();
     _mm_pause();
-    push_mask(current_thread);
+    push_mask();
   }
 }
 
@@ -28,5 +26,5 @@ void unlock(spinlock* lk)
 void lock_init(spinlock *lk) {
     // Not in contention
     atomic_store_explicit(&lk->locked, false, memory_order_relaxed);
-    pop_mask(current_thread);
+    pop_mask();
 }

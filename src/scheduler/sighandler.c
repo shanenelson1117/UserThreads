@@ -1,22 +1,22 @@
 #include "sighandler.h"
 #include "uthread.h"
 
-void push_mask(uthread_t* t)
+void push_mask()
 {
     // Save current mask onto stack
-    if (t->mask_depth == 31) 
+    if (current_thread->mask_depth == 31) 
         perror("Interrupt stack overflow");
         
-    pthread_sigmask(0, 0, &t->mask_stack[t->mask_depth++]);
+    pthread_sigmask(0, 0, &current_thread->mask_stack[current_thread->mask_depth++]);
     
     // Block SIGPROF
     disable_sigprof();
 }
 
-void pop_mask(uthread_t* t)
+void pop_mask()
 {
     // Restore previous mask
-    pthread_sigmask(SIG_SETMASK, &t->mask_stack[--t->mask_depth], 0);
+    pthread_sigmask(SIG_SETMASK, &current_thread->mask_stack[--current_thread->mask_depth], 0);
 }
 
 void enable_sigprof(void)

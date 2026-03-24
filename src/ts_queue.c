@@ -1,5 +1,5 @@
-#include "ts_queue.h"
-#include "stdlib.h"
+#include "inc/sync/ts_queue.h"
+#include <stdlib.h>
 
 /// @brief Put a thread on the injector queue.
 /// @param t Piece of work to put on the injector queue.
