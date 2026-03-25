@@ -5,13 +5,11 @@
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c11",
             "defines": [
-                "_GNU_SOURCE"
+                "_GNU_SOURCE",
+                "_POSIX_C_SOURCE=200809L"
             ],
             "includePath": [
                 "${workspaceFolder}",
-                "${workspaceFolder}/inc",
-                "${workspaceFolder}/inc/sync",
-                "${workspaceFolder}/inc/scheduler",
                 "/usr/lib/gcc/x86_64-redhat-linux/14/include",
                 "/usr/local/include",
                 "/usr/include",

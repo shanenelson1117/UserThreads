@@ -3,6 +3,8 @@
 #include "inc/sync/ts_queue.h"
 
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 static uthread_t *steal_all();
 // defined in switch_lock.asm
@@ -122,34 +124,73 @@ void mark_as_ready(uthread_t *t)
   deque *local = pool_state.queues[worker_idx - 1];
   t->state = READY;
   pthread_mutex_lock(&pool_state.work_m);
+  // TODO: This can fail
   push(local, t);
   pthread_cond_broadcast(&pool_state.work_waker);
   pthread_mutex_unlock(&pool_state.work_m);
 }
 
 uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
-  uthread_t* new_thread = malloc(sizeof(uthread_t));
-  // TODO: allocate stack and set up gaurd pages, allocate all other fields
-  // of the uthread, if detached do not set up condvar or mutex for joining
-  /*
-  new_routine->saved_stack_pointer = new_routine->private_stack + STACK_ENTRIES;
-  uint64_t* sp = new_routine->saved_stack_pointer;
-  */
-  // Set up stack environment
-  uint64_t *sp; // temp
-  *--sp = (uint64_t) f;                // f() must be visible to staging f
-  *--sp = (uint64_t) args;// Channel must be visible to staging f
-  *--sp = (uint64_t) trampoline;        // Staging f must be retaddr
+  uthread_t *new_thread = calloc(1, sizeof(uthread_t));
 
-  // make room for pops
-  for (int i = 0; i < 6; i++) {
-    *--sp = 0;
+  // Get the size of a page to use as a gaurd page,
+  // when we hit this we will segfault and can grow the stack
+  size_t gaurd_size = sysconf(_SC_PAGESIZE);
+  size_t stack_size;
+  char* thread_name = "unnamed";
+  if (info != NULL) {
+    stack_size = info->ssize_initial;
+    thread_name = info->name;
+  } else {
+    stack_size = STACK_INITIAL;
   }
- 
-  //new_routine->saved_stack_pointer = sp;
+  size_t alloc_size = gaurd_size + stack_size;
+
+  // Use mmap so we can protect the gaurd page
+  void *mem = mmap(NULL, alloc_size,
+                     PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS,
+                     -1, 0);
+  
+  if (mem == MAP_FAILED) {
+    printf("Failed to allocate a stack for uthread with name: %s \n", thread_name);
+    abort();
+  }
+  // Set the gaurd page addresses to segfault on any access
+  int prot_res = mprotect(mem, gaurd_size, PROT_NONE);
+
+  if (prot_res == -1) {
+    printf("Failed to protect stack for uthread with name: %s \n", thread_name);
+    abort();
+  }
+  // Bookkeeping for segfault handler
+  new_thread->stack_base = mem;
+  new_thread->stack_size = stack_size;
+
+  // Set up stack environment
+  uint64_t *sp = (uint64_t *)(mem + alloc_size);
+
+  *--sp = (uint64_t) f;
+  *--sp = (uint64_t) args;
+  *--sp = (uint64_t) trampoline;
+
+  for (int i = 0; i < 6; i++)
+      *--sp = 0;
+
+  new_thread->sp = sp;
   
   // Push onto injector queue if called from outside the pool,
   // or the local queue if called from inside the pool
+  pthread_mutex_lock(&pool_state.work_m);
+  if (worker_idx == 0) {
+    // Outside pool
+    injector_push(new_thread);
+  } else {
+    push(&pool_state.queues[worker_idx - 1], new_thread);
+  }
+  pthread_cond_broadcast(&pool_state.work_waker);
+  pthread_mutex_unlock(&pool_state.work_m);
+  // Return tid to caller for joining
   return new_thread;
 }
 

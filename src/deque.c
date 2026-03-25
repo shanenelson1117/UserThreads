@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdatomic.h>
-#include <confname.h>
+#include <unistd.h>
 
 #include "inc/sync/deque.h"
 

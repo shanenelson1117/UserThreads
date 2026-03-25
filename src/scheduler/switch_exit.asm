@@ -1,4 +1,4 @@
-// Only called from sigprof handler
+
     .global switch_exit
 
 // void switch_exit(uthread_t* next);
