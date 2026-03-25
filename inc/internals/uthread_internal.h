@@ -10,12 +10,15 @@ typedef enum {
 } thread_state;
 
 struct uthread_t {
-  void *sp;
+  void *sp;                 // stack pointer
+  void *stack_base;         // Base of stack for freeing/dynamic alloc
+  size_t stack_size;        // current usable stack size
   void *f, *args;
   thread_state state;
-  unsigned long *stack;
-  struct uthread *next;     // use struct tag not typedef
+  struct uthread *next;
   uthread_info *info;
   sigset_t mask_stack[32];  // stack of interrrupt status per uthread
   int mask_depth;           // ptr into stack
+  pthread_mutex_t join_m;   // For joiners
+  pthread_cond_t join_c;    // For joiners
 };

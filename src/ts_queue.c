@@ -3,9 +3,8 @@
 
 /// @brief Put a thread on the injector queue.
 /// @param t Piece of work to put on the injector queue.
-void injector_push(uthread_t *t)
+static void q_push(uthread_t *t, ts_queue *q)
 { 
-  ts_queue *q = pool_state.injector_q;
   pthread_mutex_lock(&q->m);
  
   if (q->count == q->size) {
@@ -29,9 +28,8 @@ void injector_push(uthread_t *t)
 
 /// @brief Grab a piece of work from the injector queue
 /// @return Piece of work popped from queue.
-uthread_t *injector_pop()
+static uthread_t *q_pop(ts_queue *q)
 { 
-  ts_queue *q = pool_state.injector_q;
   pthread_mutex_lock(&q->m);
   uthread_t *ret = NULL;
  
@@ -42,4 +40,33 @@ uthread_t *injector_pop()
   }
   pthread_mutex_unlock(&q->m);
   return ret;
+}
+
+
+/// @brief Put a thread on the injector queue.
+/// @param t Piece of work to put on the injector queue.
+void done_push(uthread_t *t)
+{
+  q_push(t, pool_state.done_threads);
+}
+
+/// @brief Grab a piece of work from the injector queue
+/// @return Piece of work popped from queue.
+uthread_t *done_pop()
+{
+  q_pop(pool_state.done_threads);
+}
+
+/// @brief Put a thread on the injector queue.
+/// @param t Piece of work to put on the injector queue.
+void injector_push(uthread_t *t)
+{
+  q_push(t, pool_state.injector_q);
+}
+
+/// @brief Grab a piece of work from the injector queue
+/// @return Piece of work popped from queue.
+uthread_t *injector_pop()
+{
+  q_pop(pool_state.injector_q);
 }

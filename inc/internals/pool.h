@@ -11,5 +11,7 @@ typedef struct {
   pthread_mutex_t work_m;
   pthread_cond_t work_waker;
   ts_queue *injector_q;
+  ts_queue *done_threads;
   pthread_t **worker_handles;
+  bool work_available;
 } pool;

@@ -10,8 +10,6 @@ switch_lock:
     push %r15
     push %rbx
     push %rbp
-    push %r12
-
 
     // Save lock in rax
     mov %rsi, %rax
@@ -21,12 +19,7 @@ switch_lock:
     mov 0(%rdi), %rsp
     mov %rdi, current_uthread(%rip)
 
-    // Unlock the passed in lock
-    mov %rax, %rdi
-    call unlock
-
     // Restore important registers
-    pop %r12
     pop %rbp
     pop %rbx
     pop %r15
@@ -36,7 +29,9 @@ switch_lock:
 
     push %r12
 
-    call pop_mask
+    // Unlock the passed in lock
+    mov %rax, %rdi
+    call unlock
 
     pop %r12
 

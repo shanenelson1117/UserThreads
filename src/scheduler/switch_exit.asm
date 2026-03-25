@@ -1,17 +1,8 @@
 // Only called from sigprof handler
-    .global switch_no_lock
+    .global switch_exit
 
-// void switch(uthread_t* next);
-switch_no_lock:
-    push %r12
-    push %r13
-    push %r14
-    push %r15
-    push %rbx
-    push %rbp
-
-    mov current_uthread(%rip), %rsi
-    mov %rsp, 0(%rsi)
+// void switch_exit(uthread_t* next);
+switch_exit:
     mov 0(%rdi), %rsp
     mov %rdi, current_uthread(%rip)
 

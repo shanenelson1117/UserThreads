@@ -14,7 +14,8 @@
                 "${workspaceFolder}/inc/scheduler",
                 "/usr/lib/gcc/x86_64-redhat-linux/14/include",
                 "/usr/local/include",
-                "/usr/include"
+                "/usr/include",
+                "/usr/include/bits"
             ]
         }
     ],

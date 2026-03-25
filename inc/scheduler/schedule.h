@@ -19,12 +19,17 @@ uthreads.
 /// passed in lock before relinquishing control.
 void block(spinlock *lk);
 
+// TODO: figure out how to block when waiting on an async
+// syscall. Should just pick something of the run queue and
+// run it.
+void block_async();
+
 /// @brief voluntarily release kthread
 /// to work on another uthread. Sets process to 
 /// READY and reenqueues on the ready queue for the 
 /// kthread, or injector queue if called from
 /// outside the pool.
-void yield();
+void exit_yield();
 
 /// @brief Mark thread t as READY and put it on
 /// the ready queue for the current kthread, or 

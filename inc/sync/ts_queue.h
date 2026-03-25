@@ -23,3 +23,11 @@ void injector_push(uthread_t *t);
 /// @brief Grab a piece of work from the injector queue
 /// @return Piece of work popped from queue.
 uthread_t *injector_pop();
+
+/// @brief Put a thread on the injector queue.
+/// @param t Piece of work to put on the injector queue.
+void done_push(uthread_t *t);
+
+/// @brief Grab a piece of work from the injector queue
+/// @return Piece of work popped from queue.
+uthread_t *done_pop();

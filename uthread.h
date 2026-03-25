@@ -12,12 +12,48 @@ synchronization primitives
 #include <stdint.h>
 #include <pthread.h>
 
+/*
+Runtime API functions
+*/
+/// Initialize the runtime. Must be 
+/// called before spawning any uthreads.
+void uthread_init();
+
+/// Shutdown the runtime.
+void uthread_shutdown();
+
+/*
+Thread API functions and definitions
+*/
+typedef uthread_t uthread_tid;
+
+/// @brief Spawn a uthread.
+/// @param f Entry point for spawned uthread.
+/// @param args Arguments for entry point function.
+/// @param info Optional context for runtime, see struct definition.
+/// If user does not wish to provide, NULL should be passed.
+/// @return A joinable handle for the spawned thread.
+uthread_tid uthread_spawn(void *f, void *args, uthread_info* info);
+
+/// @brief Wait for the provided uthread_tid to finish.
+/// @param uthread Uthread to join on.
+/// Cannot call join on a uthread_tid, which was spawned
+/// with the uthread_info.detached option set to true.
+void uthread_join(uthread_tid uthread);
+
+// For now only support for one
+// priority level. Used to signify the priority
+// level of a thread
 typedef enum {
   LOW,
   MEDIUM,
   HIGH,
 } sched_priority;
 
+// This library dynamically grows uthread stacks.
+// The stack_size enum is used to select how large
+// a stack starts, and is able to grow to before a
+// stack overflow will terminate the program.
 typedef enum {
     STACK_INITIAL = 4 * 1024,        // 4KB starting stack
     STACK_MAX_DEFAULT = 8 * 1024 * 1024,  // 8MB max
@@ -25,29 +61,29 @@ typedef enum {
 
 // Used to configure per thread metadata
 typedef struct {
-  stack_size ssize;
-  bool detached;
+  stack_size ssize_initial;
+  stack_size ssize_max;
+  bool detached;              // Is this uthread joinable?
   sched_priority priority;
-  char name[16];
+  char name[16];              // For debugging purposes
 } uthread_info;
 
 typedef struct uthread_t uthread_t;
+
 
 // Internal queue used by sync primitives
 typedef struct {
   uthread_t *head, *tail;
 } uthread_queue;
 
-/*
-Runtime functions
-*/
-/// Initialize the runtime.
-void uthread_init();
-/// Shutdown the runtime.
-void uthread_shutdown();
+
 
 /*
-Spinlock
+Synchronization primitive API
+*/
+
+/*
+Spinlock, users should use mutex rather than spinlock.
 */
 typedef struct {
   _Atomic bool locked;
@@ -66,7 +102,7 @@ void lock(spinlock* lk);
 void unlock(spinlock* lk);
 
 /*
-Barrier
+Reusable Barrier
 */
 typedef struct {
   uthread_queue q;  // Queue of threads
