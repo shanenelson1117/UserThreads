@@ -3,6 +3,7 @@
 
 #include "inc/internals/uthread_internal.h"
 #include "inc/scheduler/schedule.h"
+#include "inc/internals/pool.h"
 
 void barrier_wait(barrier* b)
 {
@@ -21,7 +22,7 @@ void barrier_wait(barrier* b)
     unlock(&b->lk);
     printf("Too many threads blocked on barrier");
   } else {
-    enqueue(&b->q, current_uthread);
+    enqueue(&b->q, current_uthreads[worker_idx]);
     // Schedule a different thread
     block(&b->lk);
   }

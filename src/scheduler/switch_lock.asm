@@ -2,7 +2,7 @@
     .extern pop_mask
     .global switch_lock
 
-// void switch(uthread_t* next, spinlock* lk);
+// void switch(uthread_t* next, spinlock* lk, int worker_idx);
 switch_lock:
     push %r12
     push %r13
@@ -14,10 +14,11 @@ switch_lock:
     // Save lock in rax
     mov %rsi, %rax
 
-    mov current_uthread(%rip), %rsi
+    lea current_uthreads(%rip), %rcx
+    mov (%rcx, %rdx, 8), %rsi
     mov %rsp, 0(%rsi)
     mov 0(%rdi), %rsp
-    mov %rdi, current_uthread(%rip)
+    mov %rdi, (%rcx, %rdx, 8)
 
     // Restore important registers
     pop %rbp

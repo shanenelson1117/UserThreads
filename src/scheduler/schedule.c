@@ -1,4 +1,5 @@
 #include "inc/scheduler/schedule.h"
+#include "inc/internals/pool.h"
 #include "inc/sync/deque.h"
 #include "inc/sync/ts_queue.h"
 
@@ -7,25 +8,25 @@
 
 static uthread_t *steal_all();
 // defined in switch_lock.asm
-extern void switch_lock(uthread_t *next, spinlock *lk);
+extern void switch_lock(uthread_t *next, spinlock *lk, int worker_idx);
 // defined in switch_no_lock.asm
-extern void switch_no_lock(uthread_t *next);
+extern void switch_no_lock(uthread_t *next, int worker_idx);
 // defined in switch_exit.asm
-extern void switch_exit(uthread_t *next);
+extern void switch_exit(uthread_t *next, int worker_idx);
 // defined in trampoline.asm
 extern void trampoline(void);
 
 void block(spinlock *lk)
 { 
-  current_uthread->state = BLOCKED;
+  current_uthreads[worker_idx]->state = BLOCKED;
   // Select next work
-  if (worker_idx == 0) {
+  if (worker_idx == -1) {
     // Until I figure out how to interoperate with 
     // underlying calling thread
     printf("Block called from outside runtime\n");
     abort();
   }
-  deque *local = pool_state.queues[worker_idx - 1];
+  deque *local = pool_state.queues[worker_idx];
   // Check local queue
   uthread_t *next = pop(local);
   while (next == NULL) {
@@ -53,39 +54,53 @@ void block(spinlock *lk)
     pthread_mutex_unlock(&pool_state.work_m);
   }
   // Schedule next and unlock "lk"
-  switch_lock(next, lk);
+  switch_lock(next, lk, worker_idx);
 }
 
 /// @brief Called at uthread exit to schedule next
 /// thread.
+//TODO: Fix this so that we are not executing on a freed
+// stack. Use a deferred stack free which executes on the next
+// uthread's stack. Use a TLS "uthread to free" pointer which
+// can be used to free the stack in the next uthreads context.
+// In worker exit we also need to free the old uthread's stack
+// after switching to the exit stack.
 void exit_yield()
 {
   // Interrupts should be off here
   disable_sigprof();
-  if (worker_idx == 0) {
+  if (worker_idx == -1) {
     // Until I figure out how to interoperate with 
     // underlying calling thread
     printf("Yield called from outside runtime\n");
     abort();
   }
+  uint64_t *my_exit_stack = exit_stack;
+  // Inline assembly to mov my_exit_stack into rsp
+  asm volatile("mov %0, %%rsp" : : "r"(my_exit_stack) : "memory");
+
   // Put finished thread on done list
-  current_uthread->state = DONE;
-  if (current_uthread->info != NULL && current_uthread->info->detached) {
+  if (current_uthreads[worker_idx]->info != NULL && current_uthreads[worker_idx]->info->detached) {
     // free stack
-    munmap(current_uthread->stack_base, current_uthread->stack_size + pool_state.page_size);
-    free(current_uthread);
+    current_uthreads[worker_idx]->state = DONE;
+    munmap(current_uthreads[worker_idx]->stack_base, current_uthreads[worker_idx]->stack_size + pool_state.page_size);
+    free(current_uthreads[worker_idx]);
   }
   // wake joiners for this uthread if it is not
   // detached
-  if (current_uthread->info == NULL || !current_uthread->info->detached) {
+  if (current_uthreads[worker_idx]->info == NULL || !current_uthreads[worker_idx]->info->detached) {
     // Do not push a detached uthread into the done queue
-    done_push(current_uthread);
-    pthread_mutex_lock(&current_uthread->join_m);
-    pthread_cond_broadcast(&current_uthread->join_c);
-    pthread_mutex_unlock(&current_uthread->join_m);
+    done_push(current_uthreads[worker_idx]);
+    // Notify joiners that we are done
+    pthread_mutex_lock(&current_uthreads[worker_idx]->join_m);
+    current_uthreads[worker_idx]->state = DONE;
+    // free stack
+    munmap(current_uthreads[worker_idx]->stack_base, current_uthreads[worker_idx]->stack_size + pool_state.page_size);
+    pthread_cond_broadcast(&current_uthreads[worker_idx]->join_c);
+    pthread_mutex_unlock(&current_uthreads[worker_idx]->join_m);
   }
 
-  deque *local = pool_state.queues[worker_idx - 1];
+  deque *local = pool_state.queues[worker_idx];
   uthread_t *next = pop(local);
   while (next == NULL) {
     // Try to steal
@@ -115,12 +130,13 @@ void exit_yield()
     
     if (shutting_down) {
       pthread_mutex_unlock(&pool_state.work_m);
-      pthread_exit(NULL);
+      disable_sigprof();
+      worker_exit();
     }
     pthread_cond_wait(&pool_state.work_waker, &pool_state.work_m);
     pthread_mutex_unlock(&pool_state.work_m);
   }
-  switch_exit(next);
+  switch_exit(next, worker_idx);
   // Since the yielding thread is "done", this should be dead code
   printf("Yield: reached end of non accessible code.\n");
   abort();
@@ -130,13 +146,13 @@ void exit_yield()
 // a lock.
 void mark_as_ready(uthread_t *t)
 {
-  if (worker_idx == 0) {
+  if (worker_idx == -1) {
     // Until I figure out how to interoperate with 
     // underlying calling thread
     printf("Yield called from outside runtime\n");
     abort();
   }
-  deque *local = pool_state.queues[worker_idx - 1];
+  deque *local = pool_state.queues[worker_idx];
   t->state = READY;
   pthread_mutex_lock(&pool_state.work_m);
   // Local queues are bounded and thus push can fail when full
@@ -211,7 +227,7 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
     // Outside pool
     injector_push(new_thread);
   } else {
-    if (push(&pool_state.queues[worker_idx - 1], new_thread) == -1)
+    if (push(&pool_state.queues[worker_idx], new_thread) == -1)
       injector_push(new_thread);
   }
   pthread_cond_broadcast(&pool_state.work_waker);
@@ -252,12 +268,12 @@ void enqueue(uthread_queue *q, uthread_t *t)
 Private Helpers
 */
 
-/// @brief Private helper to steal work from
+/// @brief helper to steal work from
 /// other threads' queues. To be called if no
 /// work is found on the local queue.
 /// @return NULL if no work is found,
 /// a valid uthread pointer if found.
-static uthread_t *steal_all()
+uthread_t *steal_all()
 { 
   uthread_t *result = NULL;
   if (worker_idx == 0) {

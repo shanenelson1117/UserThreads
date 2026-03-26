@@ -4,12 +4,12 @@
 /// thread.
 void sigprof_handler()
 {
-  if (worker_idx == 0) {
+  if (worker_idx == -1) {
     // Until I figure out how to interoperate with 
     // underlying calling thread
     printf("Block called from outside runtime\n");
   }
-  deque *local = pool_state.queues[worker_idx - 1];
+  deque *local = pool_state.queues[worker_idx];
   uthread_t *next = pop(local);
   if (next == NULL) {
     next = steal_all();
@@ -25,10 +25,10 @@ void sigprof_handler()
     return;
   } else {
     // Found new work
-    if (current_uthread->state != DONE)
+    if (current_uthreads[worker_idx]->state != DONE)
       // TODO: This can fail. Need to think carefully about if this can
       // actually fail given the above code, cannot use injector here tho
-      push(local, current_uthread);
+      push(local, current_uthreads[worker_idx]);
     switch_no_lock(next);
   }
   enable_sigprof();
@@ -37,10 +37,10 @@ void sigprof_handler()
 void push_mask()
 {
     // Save current mask onto stack
-    if (current_uthread->mask_depth == 31) 
+    if (current_uthreads[worker_idx]->mask_depth == 31) 
         printf("Interrupt stack overflow\n");
         
-    pthread_sigmask(0, 0, &current_uthread->mask_stack[current_uthread->mask_depth++]);
+    pthread_sigmask(0, 0, &current_uthreads[worker_idx]->mask_stack[current_uthreads[worker_idx]->mask_depth++]);
     
     // Block SIGPROF
     disable_sigprof();
@@ -49,10 +49,10 @@ void push_mask()
 void pop_mask()
 {
     // Restore previous mask
-    if (current_uthread->mask_depth == 0) {
+    if (current_uthreads[worker_idx]->mask_depth == 0) {
         return;
     }
-    pthread_sigmask(SIG_SETMASK, &current_uthread->mask_stack[--current_uthread->mask_depth], 0);
+    pthread_sigmask(SIG_SETMASK, &current_uthreads[worker_idx]->mask_stack[--current_uthreads[worker_idx]->mask_depth], 0);
 }
 
 void enable_sigprof(void)

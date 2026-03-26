@@ -1,10 +1,11 @@
 
     .global switch_exit
 
-// void switch_exit(uthread_t* next);
+// void switch_exit(uthread_t* next, int worker_idx);
 switch_exit:
+    lea current_uthreads(%rip), %rcx
     mov 0(%rdi), %rsp
-    mov %rdi, current_uthread(%rip)
+    mov %rdi, (%rcx, %rsi, 8)
 
     // Restore important registers
     pop %rbp

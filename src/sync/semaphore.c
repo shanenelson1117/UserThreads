@@ -2,6 +2,7 @@
 
 #include "inc/scheduler/schedule.h"
 #include "inc/internals/uthread_internal.h"
+#include "inc/internals/pool.h"
 
 void semaphore_init(semaphore *s, int limit)
 {
@@ -16,7 +17,7 @@ void semaphore_down(semaphore *s)
   lock(&s->lk);
 
   while (s->count == s->limit) {
-    enqueue(&s->q, current_uthread);
+    enqueue(&s->q, current_uthreads[worker_idx]);
     block(&s->lk);
     lock(&s->lk);
   }

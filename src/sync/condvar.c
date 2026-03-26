@@ -1,5 +1,6 @@
 #include "inc/internals/uthread_internal.h"
 #include "inc/scheduler/schedule.h"
+#include "inc/internals/pool.h"
 
 #include <stddef.h>
 
@@ -28,7 +29,7 @@ void condvar_notify_all(condvar *cv)
 void condvar_wait(condvar *cv, mutex *m)
 {
   lock(&cv->lk);
-  enqueue(&cv->q, current_uthread);
+  enqueue(&cv->q, current_uthreads[worker_idx]);
   mutex_unlock(m);
   block(&cv->lk);
 }

@@ -1,7 +1,7 @@
 // Only called from sigprof handler
     .global switch_no_lock
 
-// void switch(uthread_t* next);
+// void switch(uthread_t* next, int worker_idx);
 switch_no_lock:
     push %r12
     push %r13
@@ -10,10 +10,11 @@ switch_no_lock:
     push %rbx
     push %rbp
 
-    mov current_uthread(%rip), %rsi
-    mov %rsp, 0(%rsi)
+    lea current_uthreads(%rip), %rcx
+    mov (%rcx, %rsi, 8), %rdx
+    mov %rsp, 0(%rdx)
     mov 0(%rdi), %rsp
-    mov %rdi, current_uthread(%rip)
+    mov %rdi, (%rcx, %rsi, 8)
 
     // Restore important registers
     pop %rbp
