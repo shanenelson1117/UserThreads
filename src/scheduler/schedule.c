@@ -3,7 +3,6 @@
 #include "inc/sync/ts_queue.h"
 
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/mman.h>
 
 static uthread_t *steal_all();
@@ -40,7 +39,6 @@ void block(spinlock *lk)
     }
     // Sleep if no work
     pthread_mutex_lock(&pool_state.work_m);
-    // Recheck local
     if ((next = pop(local)) != NULL) {
       pthread_mutex_unlock(&pool_state.work_m);
       break;
@@ -64,22 +62,29 @@ void exit_yield()
 {
   // Interrupts should be off here
   disable_sigprof();
-  // Put finished thread on done list
-  current_uthread->state = DONE;
-  if (current_uthread->info != NULL && !current_uthread->info->detached)
-    // Do not push a detached uthread into the done queue
-    done_push(current_uthread);
-
-  if (current_uthread->info != NULL && current_uthread->info->detached) {
-    // TODO: Free detached exited thread struct and members
-  }
-
   if (worker_idx == 0) {
     // Until I figure out how to interoperate with 
     // underlying calling thread
     printf("Yield called from outside runtime\n");
     abort();
   }
+  // Put finished thread on done list
+  current_uthread->state = DONE;
+  if (current_uthread->info != NULL && current_uthread->info->detached) {
+    // free stack
+    munmap(current_uthread->stack_base, current_uthread->stack_size + pool_state.page_size);
+    free(current_uthread);
+  }
+  // wake joiners for this uthread if it is not
+  // detached
+  if (current_uthread->info == NULL || !current_uthread->info->detached) {
+    // Do not push a detached uthread into the done queue
+    done_push(current_uthread);
+    pthread_mutex_lock(&current_uthread->join_m);
+    pthread_cond_broadcast(&current_uthread->join_c);
+    pthread_mutex_unlock(&current_uthread->join_m);
+  }
+
   deque *local = pool_state.queues[worker_idx - 1];
   uthread_t *next = pop(local);
   while (next == NULL) {
@@ -101,6 +106,16 @@ void exit_yield()
     if ((next = injector_pop()) != NULL) {
       pthread_mutex_unlock(&pool_state.work_m);
       break;
+    }
+    // This works as long as the user does not submit
+    // work after calling shutdown
+    pthread_rwlock_rdlock(&pool_state.shutdown_lock);
+    bool shutting_down = pool_state.shutdown;
+    pthread_rwlock_unlock(&pool_state.shutdown_lock);
+    
+    if (shutting_down) {
+      pthread_mutex_unlock(&pool_state.work_m);
+      pthread_exit(NULL);
     }
     pthread_cond_wait(&pool_state.work_waker, &pool_state.work_m);
     pthread_mutex_unlock(&pool_state.work_m);
@@ -124,8 +139,10 @@ void mark_as_ready(uthread_t *t)
   deque *local = pool_state.queues[worker_idx - 1];
   t->state = READY;
   pthread_mutex_lock(&pool_state.work_m);
-  // TODO: This can fail
-  push(local, t);
+  // Local queues are bounded and thus push can fail when full
+  if (push(local, t) == -1) {
+    injector_push(t);
+  }
   pthread_cond_broadcast(&pool_state.work_waker);
   pthread_mutex_unlock(&pool_state.work_m);
 }
@@ -135,7 +152,6 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
 
   // Get the size of a page to use as a gaurd page,
   // when we hit this we will segfault and can grow the stack
-  size_t gaurd_size = sysconf(_SC_PAGESIZE);
   size_t stack_size;
   char* thread_name = "unnamed";
   if (info != NULL) {
@@ -144,7 +160,7 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
   } else {
     stack_size = STACK_INITIAL;
   }
-  size_t alloc_size = gaurd_size + stack_size;
+  size_t alloc_size = pool_state.page_size + stack_size;
 
   // Use mmap so we can protect the gaurd page
   void *mem = mmap(NULL, alloc_size,
@@ -157,7 +173,7 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
     abort();
   }
   // Set the gaurd page addresses to segfault on any access
-  int prot_res = mprotect(mem, gaurd_size, PROT_NONE);
+  int prot_res = mprotect(mem, pool_state.page_size, PROT_NONE);
 
   if (prot_res == -1) {
     printf("Failed to protect stack for uthread with name: %s \n", thread_name);
@@ -178,7 +194,16 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
       *--sp = 0;
 
   new_thread->sp = sp;
-  
+
+  // Init join infra for non-detached threads
+  if (info == NULL || !info->detached) {
+    pthread_mutex_init(&new_thread->join_m, NULL);
+    pthread_cond_init(&new_thread->join_c, NULL);
+  }
+
+  new_thread->state = READY;
+  new_thread->info = info;
+
   // Push onto injector queue if called from outside the pool,
   // or the local queue if called from inside the pool
   pthread_mutex_lock(&pool_state.work_m);
@@ -186,7 +211,8 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
     // Outside pool
     injector_push(new_thread);
   } else {
-    push(&pool_state.queues[worker_idx - 1], new_thread);
+    if (push(&pool_state.queues[worker_idx - 1], new_thread) == -1)
+      injector_push(new_thread);
   }
   pthread_cond_broadcast(&pool_state.work_waker);
   pthread_mutex_unlock(&pool_state.work_m);
@@ -253,4 +279,3 @@ static uthread_t *steal_all()
   }
   
   return NULL;
-}

@@ -13,7 +13,6 @@ struct uthread_t {
   void *sp;                 // stack pointer
   void *stack_base;         // Base of stack for freeing/dynamic alloc
   size_t stack_size;        // current usable stack size
-  void *f, *args;
   thread_state state;
   struct uthread *next;
   uthread_info *info;

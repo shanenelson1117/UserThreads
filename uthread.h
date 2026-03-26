@@ -38,7 +38,9 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info);
 /// @brief Wait for the provided uthread_tid to finish.
 /// @param uthread Uthread to join on.
 /// Cannot call join on a uthread_tid, which was spawned
-/// with the uthread_info.detached option set to true.
+/// with the uthread_info.detached option set to true. Also,
+/// undefined behavior to call join on a uthread, after uthread_shutdown
+/// has been called. Users should join all uthreads before calling uthread_shutdown.
 void uthread_join(uthread_tid uthread);
 
 // For now only support for one
