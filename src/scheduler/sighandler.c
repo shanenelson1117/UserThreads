@@ -15,6 +15,8 @@ void sigprof_handler()
     next = steal_all();
   }
   if (next == NULL) {
+    // TODO: should not be using a ts_queue
+    // within a sig handler, mutex ops arent async signal safe
     next = injector_pop();
   }
   if (next == NULL) {
@@ -24,6 +26,8 @@ void sigprof_handler()
   } else {
     // Found new work
     if (current_uthread->state != DONE)
+      // TODO: This can fail. Need to think carefully about if this can
+      // actually fail given the above code, cannot use injector here tho
       push(local, current_uthread);
     switch_no_lock(next);
   }
