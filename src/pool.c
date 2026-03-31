@@ -3,6 +3,10 @@
 #include <signal.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include <sys/mman.h>
+
+void *worker_spawn(void *args);
+extern void switch_exit(uthread_t* next, int worker_idx);
 
 void uthread_init(int num_workers)
 {
@@ -73,7 +77,6 @@ void uthread_shutdown()
   pool_state.shutdown = true;
   pthread_rwlock_unlock(&pool_state.shutdown_lock);
 
-  uint64_t *exit_stacks[pool_state.num_workers];
   for (int i = 0; i < pool_state.num_workers; i++) {
     void *exit_stacki;
     if (pthread_join(pool_state.worker_handles[i], &exit_stacki) == -1) {
@@ -90,7 +93,7 @@ void uthread_shutdown()
 
   // Free all resources of done joinable uthreads
   ts_queue *q = pool_state.done_threads;
-  for (int i = 0; i < q->count; i++) {
+  for (unsigned int i = 0; i < q->count; i++) {
     uthread_t *ut = q->array[(q->bottom + i) % q->size];
     for (int i = 0; i < ut->num_old_stacks; i++) {
       munmap(ut->old_stacks[i], ut->old_stack_sizes[i]);
@@ -133,10 +136,10 @@ void *worker_spawn(void *args)
   // Loop to find only first task
   uthread_t *next = injector_pop();
   while (next == NULL) {
-    // Try to steal
-    if ((next = steal_all()) != NULL) {
-      break;
-    }
+    // // Try to steal
+    // if ((next = steal_all()) != NULL) {
+    //   break;
+    // }
     // Check injector queue
     if ((next = injector_pop()) != NULL) {
       break;
@@ -162,7 +165,10 @@ void *worker_spawn(void *args)
     pthread_mutex_unlock(&pool_state.work_m);
   }
   // Sigprof is enabled in the trampoline code for spawned threads
-  switch_exit(next);
+  switch_exit(next, worker_idx);
+
+  // dead code to appease the gcc gods
+  return NULL;
 }
 
 // Clean up alloced resources including sigsev alternate stack (mask sigprof/sigsev before exiting)

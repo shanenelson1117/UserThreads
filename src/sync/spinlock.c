@@ -12,7 +12,7 @@ void lock(spinlock* lk)
                                                   memory_order_relaxed)) {
     wanted = false;
     pop_mask();
-    _mm_pause();
+    __asm__ volatile("pause");
     push_mask();
   }
 }

@@ -1,4 +1,5 @@
 #include "inc/sync/ts_queue.h"
+#include "inc/internals/pool.h"
 #include <stdlib.h>
 
 /// @brief Put a thread on the injector queue.
@@ -10,7 +11,7 @@ static void q_push(uthread_t *t, ts_queue *q)
   if (q->count == q->size) {
     // Full, grow array
     uthread_t **new_array = malloc(q->size * 2 * sizeof(uthread_t *));
-    for (int i = 0; i < q->count; i++) {
+    for (unsigned int i = 0; i < q->count; i++) {
         new_array[i] = q->array[(q->bottom + i) % q->size];
     }
     free(q->array);
@@ -54,7 +55,7 @@ void done_push(uthread_t *t)
 /// @return Piece of work popped from queue.
 uthread_t *done_pop()
 {
-  q_pop(pool_state.done_threads);
+  return q_pop(pool_state.done_threads);
 }
 
 /// @brief Put a thread on the injector queue.
@@ -68,7 +69,7 @@ void injector_push(uthread_t *t)
 /// @return Piece of work popped from queue.
 uthread_t *injector_pop()
 {
-  q_pop(pool_state.injector_q);
+  return q_pop(pool_state.injector_q);
 }
 
 ts_queue *ts_queue_init(unsigned int initial_size)

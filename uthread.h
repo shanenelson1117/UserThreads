@@ -54,7 +54,7 @@ void uthread_shutdown();
 /*
 Thread API functions and definitions
 */
-typedef struct uthread_t uthread_tid;
+typedef struct uthread_t* uthread_tid;
 
 /// @brief Spawn a uthread.
 /// @param f Entry point for spawned uthread.

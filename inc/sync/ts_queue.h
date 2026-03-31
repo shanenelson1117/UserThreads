@@ -6,9 +6,6 @@ circular array.
 #include <pthread.h>
 
 #include "inc/internals/uthread_internal.h"
-#include "inc/internals/pool.h"
-
-extern pool pool_state;
 
 typedef struct {
   unsigned int top, bottom, size, count;

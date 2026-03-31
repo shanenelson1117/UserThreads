@@ -1,28 +1,28 @@
 CC = gcc
-CFLAGS = -std=c11 -O2 -Wall -Wextra -pthread -D_GNU_SOURCE
+CFLAGS = -std=gnu11 -O2 -Wall -Wextra -pthread -D_GNU_SOURCE
 INCLUDES = -I.
 
 # Source files
-SRCS = src/pool.c \
-       src/scheduler/schedule.c \
-       src/scheduler/sighandler.c \
-       src/deque.c \
-			 src/state.c \
-       src/ts_queue.c \
-       src/sync/spinlock.c \
-       src/sync/condvar.c \
-       src/sync/barrier.c \
-       src/sync/mutex.c \
-       src/sync/semaphore.c \
-			 src/sync/rw_lock.c \
-       src/uthread.c
+SRCS = \
+	src/pool.c \
+	src/scheduler/schedule.c \
+	src/scheduler/sighandler.c \
+	src/deque.c \
+	src/state.c \
+	src/ts_queue.c \
+	src/sync/spinlock.c \
+	src/sync/condvar.c \
+	src/sync/barrier.c \
+	src/sync/mutex.c \
+	src/sync/semaphore.c \
+	src/sync/rw_lock.c
 
 # Assembly files
-ASM_SRCS = src/scheduler/switch_exit.S \
-           src/scheduler/trampoline.S \
-					 src/scheduler/switch_lock.S \
-					 src/scheduler/switch_no_lock.S \
-
+ASM_SRCS = \
+	src/scheduler/switch_exit.S \
+	src/scheduler/trampoline.S \
+	src/scheduler/switch_lock.S \
+	src/scheduler/switch_no_lock.S
 
 OBJS = $(SRCS:.c=.o) $(ASM_SRCS:.S=.o)
 
@@ -49,7 +49,7 @@ TEST_BINS = $(TEST_SRCS:.c=)
 test: $(LIB) $(TEST_BINS)
 
 tests/%: tests/%.c $(LIB)
-	$(CC) $(CFLAGS) $(INCLUDES) $< -L. -luthread -o $@
+	$(CC) $(CFLAGS) $(INCLUDES) $< -L. -l:uthread.a -o $@
 
 clean:
 	rm -f $(OBJS) $(LIB) $(TEST_BINS)

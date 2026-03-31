@@ -1,6 +1,7 @@
 #include "inc/scheduler/sighandler.h"
 
 #include <sys/mman.h>
+#include <stdio.h>
 
 // defined in switch_no_lock.asm
 extern void switch_no_lock(uthread_t *next, int worker_idx);
@@ -8,7 +9,10 @@ extern void switch_no_lock(uthread_t *next, int worker_idx);
 /// @brief Called at uthread exit to schedule next
 /// thread.
 void sigprof_handler(int sig)
-{
+{ 
+  if (sig != SIGPROF) {
+    return;
+  }
   if (worker_idx == -1) {
     // Until I figure out how to interoperate with 
     // underlying calling thread
@@ -39,89 +43,92 @@ void sigprof_handler(int sig)
 }
 
 void sigsegv_handler(int sig, siginfo_t *info, void *ctx)
-{
-    void *fault_addr = info->si_addr;
-    uthread_t *ut = current_uthreads[worker_idx];
+{   
+  if (sig != SIGSEGV) {
+    return;
+  }
+  void *fault_addr = info->si_addr;
+  uthread_t *ut = current_uthreads[worker_idx];
 
-    if (ut == NULL) {
-        // No current uthread, real segfault
+  if (ut == NULL) {
+      // No current uthread, real segfault
+      signal(SIGSEGV, SIG_DFL);
+      raise(SIGSEGV);
+      return;
+  }
+
+  // Check if fault address is within the guard page
+  void *guard_start = ut->stack_base;
+  void *guard_end = (char *)ut->stack_base + pool_state.page_size;
+
+  if (fault_addr >= guard_start && fault_addr < guard_end) {
+      if (ut->num_old_stacks >= 8) {
+        printf("Stack overflow: exceeded maximum stack growth levels\n");
         signal(SIGSEGV, SIG_DFL);
         raise(SIGSEGV);
         return;
-    }
+      }
+      // Stack overflow — grow the stack
+      size_t new_size = ut->stack_size * 2;
 
-    // Check if fault address is within the guard page
-    void *guard_start = ut->stack_base;
-    void *guard_end = (char *)ut->stack_base + pool_state.page_size;
+      size_t smax = (ut->info != NULL && 
+          ut->info->ssize_max != 0) ? 
+          ut->info->ssize_max : 
+          STACK_MAX_DEFAULT;
 
-    if (fault_addr >= guard_start && fault_addr < guard_end) {
-        if (ut->num_old_stacks >= 8) {
-          printf("Stack overflow: exceeded maximum stack growth levels\n");
+      if (new_size > smax) {
+          printf("Stack overflow: exceeded maximum stack size for uthread\n");
           signal(SIGSEGV, SIG_DFL);
           raise(SIGSEGV);
           return;
-        }
-        // Stack overflow — grow the stack
-        size_t new_size = ut->stack_size * 2;
+      }
 
-        size_t smax = (ut->info != NULL && 
-            ut->info->ssize_max != 0) ? 
-            ut->info->ssize_max : 
-            STACK_MAX_DEFAULT;
+      // Allocate new larger stack
+      size_t new_alloc = new_size + pool_state.page_size;
+      void *new_mem = mmap(NULL, new_alloc,
+                            PROT_READ | PROT_WRITE,
+                            MAP_PRIVATE | MAP_ANONYMOUS,
+                            -1, 0);
 
-        if (new_size > smax) {
-            printf("Stack overflow: exceeded maximum stack size for uthread\n");
-            signal(SIGSEGV, SIG_DFL);
-            raise(SIGSEGV);
-            return;
-        }
+      if (new_mem == MAP_FAILED) {
+          printf("Stack overflow: failed to grow stack\n");
+          signal(SIGSEGV, SIG_DFL);
+          raise(SIGSEGV);
+          return;
+      }
 
-        // Allocate new larger stack
-        size_t new_alloc = new_size + pool_state.page_size;
-        void *new_mem = mmap(NULL, new_alloc,
-                             PROT_READ | PROT_WRITE,
-                             MAP_PRIVATE | MAP_ANONYMOUS,
-                             -1, 0);
+      // Protect new guard page
+      mprotect(new_mem, pool_state.page_size, PROT_NONE);
 
-        if (new_mem == MAP_FAILED) {
-            printf("Stack overflow: failed to grow stack\n");
-            signal(SIGSEGV, SIG_DFL);
-            raise(SIGSEGV);
-            return;
-        }
+      // Copy old stack contents to new stack
+      void *old_stack_start = (char *)ut->stack_base + pool_state.page_size;
+      void *new_stack_start = (char *)new_mem + pool_state.page_size;
+      size_t copy_offset = new_size - ut->stack_size;
 
-        // Protect new guard page
-        mprotect(new_mem, pool_state.page_size, PROT_NONE);
+      memcpy((char *)new_stack_start + copy_offset, old_stack_start, ut->stack_size);
 
-        // Copy old stack contents to new stack
-        void *old_stack_start = (char *)ut->stack_base + pool_state.page_size;
-        void *new_stack_start = (char *)new_mem + pool_state.page_size;
-        size_t copy_offset = new_size - ut->stack_size;
+      // Update saved stack pointer to point into new stack
+      ucontext_t *uc = (ucontext_t *)ctx;
+      uint64_t old_sp = uc->uc_mcontext.gregs[REG_RSP];
+      uint64_t old_base = (uint64_t)old_stack_start;
+      uint64_t new_base = (uint64_t)new_stack_start + copy_offset;
+      uc->uc_mcontext.gregs[REG_RSP] = old_sp - old_base + new_base;
 
-        memcpy((char *)new_stack_start + copy_offset, old_stack_start, ut->stack_size);
+      // Save old stack so stack derefs are not segfaults
+      ut->old_stacks[ut->num_old_stacks] = ut->stack_base;
+      ut->old_stack_sizes[ut->num_old_stacks] = ut->stack_size + pool_state.page_size;
+      ut->num_old_stacks++;
 
-        // Update saved stack pointer to point into new stack
-        ucontext_t *uc = (ucontext_t *)ctx;
-        uint64_t old_sp = uc->uc_mcontext.gregs[REG_RSP];
-        uint64_t old_base = (uint64_t)old_stack_start;
-        uint64_t new_base = (uint64_t)new_stack_start + copy_offset;
-        uc->uc_mcontext.gregs[REG_RSP] = old_sp - old_base + new_base;
+      // Update uthread bookkeeping
+      ut->stack_base = new_mem;
+      ut->stack_size = new_size;
+      ut->sp = (void *)(old_sp - old_base + new_base);
 
-        // Save old stack so stack derefs are not segfaults
-        ut->old_stacks[ut->num_old_stacks] = ut->stack_base;
-        ut->old_stack_sizes[ut->num_old_stacks] = ut->stack_size + pool_state.page_size;
-        ut->num_old_stacks++;
-
-        // Update uthread bookkeeping
-        ut->stack_base = new_mem;
-        ut->stack_size = new_size;
-        ut->sp = (void *)(old_sp - old_base + new_base);
-
-    } else {
-        // Real segfault — restore default handler and re-raise
-        signal(SIGSEGV, SIG_DFL);
-        raise(SIGSEGV);
-    }
+  } else {
+      // Real segfault — restore default handler and re-raise
+      signal(SIGSEGV, SIG_DFL);
+      raise(SIGSEGV);
+  }
 }
 
 void push_mask()

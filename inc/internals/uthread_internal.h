@@ -20,7 +20,7 @@ struct uthread_t {
   void *stack_base;         // Base of stack for freeing/dynamic alloc
   size_t stack_size;        // current usable stack size
   thread_state state;
-  struct uthread *next;
+  struct uthread_t *next;
   uthread_info *info;
   sigset_t mask_stack[32];  // stack of interrrupt status per uthread
   int mask_depth;           // ptr into stack

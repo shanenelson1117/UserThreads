@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #include "inc/internals/uthread_internal.h"
 #include "inc/scheduler/schedule.h"
@@ -20,7 +21,8 @@ void barrier_wait(barrier* b)
     unlock(&b->lk);
   } else if (b->count > b->limit) {
     unlock(&b->lk);
-    printf("Too many threads blocked on barrier");
+    printf("Too many threads blocked on barrier\n");
+    abort();
   } else {
     enqueue(&b->q, current_uthreads[worker_idx]);
     // Schedule a different thread

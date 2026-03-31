@@ -1,4 +1,5 @@
 #include "inc/scheduler/schedule.h"
+#include "inc/scheduler/sighandler.h"
 #include "inc/internals/pool.h"
 #include "inc/sync/deque.h"
 #include "inc/sync/ts_queue.h"
@@ -6,7 +7,7 @@
 #include <stdio.h>
 #include <sys/mman.h>
 
-static uthread_t *steal_all();
+uthread_t *steal_all();
 // defined in switch_lock.asm
 extern void switch_lock(uthread_t *next, spinlock *lk, int worker_idx);
 // defined in switch_no_lock.asm
@@ -167,7 +168,7 @@ void mark_as_ready(uthread_t *t)
 uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
   pthread_rwlock_rdlock(&pool_state.shutdown_lock);
   if (pool_state.shutdown) {
-    return NULL;
+    return (uthread_tid) NULL;
   }
   pthread_rwlock_unlock(&pool_state.shutdown_lock);
   uthread_t *new_thread = calloc(1, sizeof(uthread_t));
@@ -233,7 +234,7 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
     // Outside pool
     injector_push(new_thread);
   } else {
-    if (push(&pool_state.queues[worker_idx], new_thread) == -1)
+    if (push(pool_state.queues[worker_idx], new_thread) == -1)
       injector_push(new_thread);
   }
   pthread_cond_broadcast(&pool_state.work_waker);
@@ -316,3 +317,4 @@ uthread_t *steal_all()
   }
   
   return NULL;
+}
