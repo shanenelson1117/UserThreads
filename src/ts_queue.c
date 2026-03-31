@@ -70,3 +70,14 @@ uthread_t *injector_pop()
 {
   q_pop(pool_state.injector_q);
 }
+
+ts_queue *ts_queue_init(unsigned int initial_size) {
+    ts_queue *q = calloc(1, sizeof(ts_queue));
+    q->array = calloc(initial_size, sizeof(uthread_t *));
+    q->size = initial_size;
+    q->top = 0;
+    q->bottom = 0;
+    q->count = 0;
+    pthread_mutex_init(&q->m, NULL);
+    return q;
+}

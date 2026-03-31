@@ -15,4 +15,4 @@ __thread char *sigstack_base;
 
 pool pool_state = { 0 };
 
-uthread_t *current_uthreads[MAX_WORKERS];
+uthread_t *current_uthreads[MAX_WORKERS] = { 0 };

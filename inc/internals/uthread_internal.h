@@ -27,4 +27,7 @@ struct uthread_t {
   int mask_depth;           // ptr into stack
   pthread_mutex_t join_m;   // For joiners
   pthread_cond_t join_c;    // For joiners
+  void *old_stacks[8];      // previous stack bases
+  size_t old_stack_sizes[8]; // corresponding sizes
+  int num_old_stacks;
 };

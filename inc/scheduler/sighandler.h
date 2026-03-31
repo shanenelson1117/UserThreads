@@ -14,3 +14,7 @@ extern pool pool_state;
 void push_mask();
 
 void pop_mask();
+
+void sigprof_handler(int sig);
+
+void sigsegv_handler(int sig, siginfo_t *info, void *ctx);

@@ -6,6 +6,7 @@
 #include "inc/sync/ts_queue.h"
 
 #define MAX_WORKERS 64
+#define INJECTOR_SIZE 16
 extern uthread_t *current_uthreads[MAX_WORKERS];
 extern pool pool_state;
 
@@ -18,8 +19,7 @@ typedef struct {
   bool shutdown;
   ts_queue *injector_q;
   ts_queue *done_threads;
-  pthread_t **worker_handles;
-  bool work_available;
+  pthread_t worker_handles[MAX_WORKERS];
   long page_size;
 } pool;
 
@@ -31,4 +31,4 @@ typedef struct {
 /// @brief Shutdown worker thread,
 /// free TL data structures and return
 /// to pool for joining.
-uint64_t *worker_exit();
+void worker_exit();

@@ -79,11 +79,17 @@ void exit_yield()
   // Inline assembly to mov my_exit_stack into rsp
   asm volatile("mov %0, %%rsp" : : "r"(my_exit_stack) : "memory");
 
+  uthread_t *ut = current_uthreads[worker_idx];
   // Put finished thread on done list
-  if (current_uthreads[worker_idx]->info != NULL && current_uthreads[worker_idx]->info->detached) {
+  if (ut->info != NULL && ut->info->detached) {
     // free stack
-    current_uthreads[worker_idx]->state = DONE;
-    munmap(current_uthreads[worker_idx]->stack_base, current_uthreads[worker_idx]->stack_size + pool_state.page_size);
+    ut->state = DONE;
+
+    // Free all old stacks
+    for (int i = 0; i < ut->num_old_stacks; i++) {
+      munmap(ut->old_stacks[i], ut->old_stack_sizes[i]);
+    }
+
     free(current_uthreads[worker_idx]);
   }
   // wake joiners for this uthread if it is not
@@ -223,7 +229,7 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
   // Push onto injector queue if called from outside the pool,
   // or the local queue if called from inside the pool
   pthread_mutex_lock(&pool_state.work_m);
-  if (worker_idx == 0) {
+  if (worker_idx == -1) {
     // Outside pool
     injector_push(new_thread);
   } else {
@@ -276,19 +282,19 @@ Private Helpers
 uthread_t *steal_all()
 { 
   uthread_t *result = NULL;
-  if (worker_idx == 0) {
+  if (worker_idx == -1) {
     printf("Trying to steal from outside the worker pool\n");
     abort();
   }
   for (int i = worker_idx; i < pool_state.num_workers; i++) {
-    result = steal(pool_state.queues[i - 1]);
+    result = steal(pool_state.queues[i]);
     if (result != NULL) {
       return result;
     }
   }
 
-  for (int i = 1; i < worker_idx; i++) {
-    result = steal(pool_state.queues[i - 1]);
+  for (int i = 0; i < worker_idx; i++) {
+    result = steal(pool_state.queues[i]);
     if (result != NULL) {
       return result;
     }

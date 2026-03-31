@@ -31,3 +31,5 @@ void done_push(uthread_t *t);
 /// @brief Grab a piece of work from the injector queue
 /// @return Piece of work popped from queue.
 uthread_t *done_pop();
+
+ts_queue *ts_queue_init(unsigned int initial_size);

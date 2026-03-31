@@ -17,7 +17,7 @@ Runtime API functions
 */
 /// Initialize the runtime. Must be 
 /// called before spawning any uthreads.
-void uthread_init();
+void uthread_init(int num_workers);
 
 /// Shutdown the runtime.
 void uthread_shutdown();

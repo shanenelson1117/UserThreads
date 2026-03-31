@@ -1,8 +1,58 @@
 #include "inc/internals/pool.h"
 #include "inc/scheduler/sighandler.h"
 #include <signal.h>
+#include <stdio.h>
 
 // TODO: Pool init
+void uthread_init(int num_workers)
+{
+  disable_sigprof();
+  // Initialize pool state
+  if (num_workers > 64) {
+    printf("Limit 64 workers, requested: %d\n", num_workers);
+    return;
+  } else {
+    pool_state.num_workers = num_workers;
+  }
+  pthread_mutex_init(&pool_state.work_m, NULL);
+  pthread_cond_init(&pool_state.work_waker, NULL);
+  pthread_rwlock_init(&pool_state.shutdown_lock, NULL);
+
+  // Set up sigprof handler
+  struct sigaction sa;
+  sa.sa_handler = sigprof_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sigaction(SIGPROF, &sa, NULL);
+
+  struct sigaction sa_segv;
+  sa_segv.sa_sigaction = sigsegv_handler;  // note sa_sigaction not sa_handler
+  sigemptyset(&sa_segv.sa_mask);
+  sa_segv.sa_flags = SA_SIGINFO | SA_ONSTACK;
+  sigaddset(&sa_segv.sa_mask, SIGPROF);
+  sigaction(SIGSEGV, &sa_segv, NULL);
+
+  pool_state.injector_q = ts_queue_init(INJECTOR_SIZE);
+  pool_state.done_threads = ts_queue_init(INJECTOR_SIZE);
+
+  pool_state.page_size = sysconf(_SC_PAGESIZE);
+
+  pthread_barrier_t *bar = (pthread_barrier_t *) malloc(sizeof(pthread_barrier_t));
+  pthread_barrier_init(bar, NULL, num_workers + 1);
+
+  // Spawn workers
+  worker_spawn_args args[num_workers];
+  for (int i = 0; i < num_workers; i++) {
+    args[i].b = bar;
+    args[i].worker_idx = i;
+    pthread_create(&pool_state.worker_handles[i], NULL, worker_spawn, (void*) &args[i]);
+  }
+  // Need to set up async loop thread here after blocking pool works
+
+  // Wait for workers to load.
+  pthread_barrier_wait(&bar);
+  free(bar);
+}
   // Mask sigprof
   // set signal handlers
   // Spawn workers
@@ -10,6 +60,10 @@
   // return
 
 // TODO: Pool shutdown
+void uthread_shutdown()
+{
+
+}
   // Set shutdown bool
   // Join all worker threads
   // Clean up pool resources
@@ -41,8 +95,7 @@ void worker_spawn(void *args)
     printf("Unable to assign signal stack for worker thread %d \n", worker_idx);
     abort();
   }
-  // TODO: May need to create a pthread barrier if there isn't a stock one
-  pthread_barrier_wait(parsed_args->barrier);
+  pthread_barrier_wait(parsed_args->b);
   // Loop to find only first task
   uthread_t *next = injector_pop();
   while (next == NULL) {
@@ -78,10 +131,8 @@ void worker_spawn(void *args)
   switch_exit(next);
 }
 
-
-// TODO: worker exit
-  // clean up alloced resources including sigsev alternate stack (mask sigprof/sigsev before exiting)
-  // pthread exit. Return pointer to exit stack so main thread can free after joining.
+// Clean up alloced resources including sigsev alternate stack (mask sigprof/sigsev before exiting)
+// pthread exit. Return pointer to exit stack so main thread can free after joining.
 void worker_exit()
 {
   free(sigstack_base);
