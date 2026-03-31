@@ -8,10 +8,9 @@
 #define MAX_WORKERS 64
 #define INJECTOR_SIZE 16
 extern uthread_t *current_uthreads[MAX_WORKERS];
-extern pool pool_state;
 
 typedef struct {
-  deque **queues;
+  deque *queues[MAX_WORKERS];
   int num_workers;
   pthread_mutex_t work_m;
   pthread_cond_t work_waker;
@@ -22,6 +21,8 @@ typedef struct {
   pthread_t worker_handles[MAX_WORKERS];
   long page_size;
 } pool;
+
+extern pool pool_state;
 
 typedef struct {
   int worker_idx;

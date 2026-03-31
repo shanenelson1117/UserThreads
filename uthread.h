@@ -15,42 +15,7 @@ synchronization primitives
 /*
 Runtime API functions
 */
-/// Initialize the runtime. Must be 
-/// called before spawning any uthreads.
-void uthread_init(int num_workers);
-
-/// Shutdown the runtime.
-void uthread_shutdown();
-
-/*
-Thread API functions and definitions
-*/
-typedef uthread_t uthread_tid;
-
-/// @brief Spawn a uthread.
-/// @param f Entry point for spawned uthread.
-/// @param args Arguments for entry point function.
-/// @param info Optional context for runtime, see struct definition.
-/// If user does not wish to provide, NULL should be passed.
-/// @return A joinable handle for the spawned thread.
-uthread_tid uthread_spawn(void *f, void *args, uthread_info* info);
-
-/// @brief Wait for the provided uthread_tid to finish.
-/// @param uthread Uthread to join on.
-/// Cannot call join on a uthread_tid, which was spawned
-/// with the uthread_info.detached option set to true. Also,
-/// undefined behavior to call join on a uthread, after uthread_shutdown
-/// has been called. Users should join all uthreads before calling uthread_shutdown.
-void uthread_join(uthread_tid uthread);
-
-// For now only support for one
-// priority level. Used to signify the priority
-// level of a thread
-typedef enum {
-  LOW,
-  MEDIUM,
-  HIGH,
-} sched_priority;
+struct uthread_t;
 
 // This library dynamically grows uthread stacks.
 // The stack_size enum is used to select how large
@@ -61,6 +26,15 @@ typedef enum {
     STACK_MAX_DEFAULT = 8 * 1024 * 1024,  // 8MB max
 } stack_size;
 
+// For now only support for one
+// priority level. Used to signify the priority
+// level of a thread
+typedef enum {
+  LOW,
+  MEDIUM,
+  HIGH,
+} sched_priority;
+
 // Used to configure per thread metadata
 typedef struct {
   stack_size ssize_initial;
@@ -70,15 +44,49 @@ typedef struct {
   char name[16];              // For debugging purposes
 } uthread_info;
 
-typedef struct uthread_t uthread_t;
+/// Initialize the runtime. Must be 
+/// called before spawning any uthreads.
+void uthread_init(int num_workers);
 
+/// Shutdown the runtime.
+void uthread_shutdown();
+
+/*
+Thread API functions and definitions
+*/
+typedef struct uthread_t uthread_tid;
+
+/// @brief Spawn a uthread.
+/// @param f Entry point for spawned uthread.
+/// @param args Arguments for entry point function.
+/// @param info Optional context for runtime, see struct definition.
+/// If user does not wish to provide, NULL should be passed.
+/// @return A joinable handle for the spawned thread. Will return
+/// NULL if `uthread_shutdown()` has already been called.
+uthread_tid uthread_spawn(void *f, void *args, uthread_info* info);
+
+/// @brief Wait for the provided uthread_tid to finish.
+/// @param uthread Uthread to join on.
+/// Cannot call join on a uthread_tid which was spawned
+/// with the uthread_info.detached option set to true. Also,
+/// undefined behavior to call join on a uthread, after uthread_shutdown
+/// has been called. Users should join all uthreads before calling uthread_shutdown.
+/// @attention Joining is not a memory efficient operation, as all joinable uthreads remain
+/// stored until `uthread_shutdown()` is called. If memory-constrained or large
+/// workload users want to ensure that all
+/// uthreads are scheduled (and therefore finished) before `uthread_shutdown` they
+/// should spawn detached uthreads in one joinable wrapper uthread and join it before calling 
+/// `uthread_shutdown()`. Similarly if coordination between uthreads is needed
+/// a `barrier` can be used to cheaply implement much of the synchronization
+/// that join provides.
+void uthread_join(uthread_tid uthread);
+
+typedef struct uthread_t uthread_t;
 
 // Internal queue used by sync primitives
 typedef struct {
   uthread_t *head, *tail;
 } uthread_queue;
-
-
 
 /*
 Synchronization primitive API

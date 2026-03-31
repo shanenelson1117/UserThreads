@@ -59,12 +59,7 @@ void block(spinlock *lk)
 
 /// @brief Called at uthread exit to schedule next
 /// thread.
-//TODO: Fix this so that we are not executing on a freed
-// stack. Use a deferred stack free which executes on the next
-// uthread's stack. Use a TLS "uthread to free" pointer which
-// can be used to free the stack in the next uthreads context.
-// In worker exit we also need to free the old uthread's stack
-// after switching to the exit stack.
+
 void exit_yield()
 {
   // Interrupts should be off here
@@ -89,7 +84,7 @@ void exit_yield()
     for (int i = 0; i < ut->num_old_stacks; i++) {
       munmap(ut->old_stacks[i], ut->old_stack_sizes[i]);
     }
-
+    munmap(ut->stack_base, ut->stack_size + pool_state.page_size);
     free(current_uthreads[worker_idx]);
   }
   // wake joiners for this uthread if it is not
@@ -170,6 +165,11 @@ void mark_as_ready(uthread_t *t)
 }
 
 uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
+  pthread_rwlock_rdlock(&pool_state.shutdown_lock);
+  if (pool_state.shutdown) {
+    return NULL;
+  }
+  pthread_rwlock_unlock(&pool_state.shutdown_lock);
   uthread_t *new_thread = calloc(1, sizeof(uthread_t));
 
   // Get the size of a page to use as a gaurd page,
@@ -240,6 +240,21 @@ uthread_tid uthread_spawn(void *f, void *args, uthread_info* info) {
   pthread_mutex_unlock(&pool_state.work_m);
   // Return tid to caller for joining
   return new_thread;
+}
+
+void uthread_join(uthread_tid uthread)
+{
+  uthread_t *ut = (uthread_t *) uthread;
+
+  if (!ut) return;
+
+  if (ut->info != NULL && ut->info->detached) return;
+
+  pthread_mutex_lock(&ut->join_m);
+  while (ut->state != DONE) {
+    pthread_cond_wait(&ut->join_c, &ut->join_m);
+  }
+  pthread_mutex_unlock(&ut->join_m);
 }
 
 /*

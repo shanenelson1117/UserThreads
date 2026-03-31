@@ -29,10 +29,10 @@ typedef struct {
 
 // Specified by user with config struct
 typedef enum {
-  SMALL = 8,
-  MEDIUM = 64,
-  LARGE = 128,
-  VERY_LARGE = 256,
+  SMALL_WL_SIZE = 8,
+  MEDIUM_WL_SIZE = 64,
+  LARGE_WL_SIZE = 128,
+  VERY_LARGE_WL_SIZE = 256,
 } workload_size;
 
 // ------------------------

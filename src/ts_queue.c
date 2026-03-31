@@ -71,7 +71,8 @@ uthread_t *injector_pop()
   q_pop(pool_state.injector_q);
 }
 
-ts_queue *ts_queue_init(unsigned int initial_size) {
+ts_queue *ts_queue_init(unsigned int initial_size)
+{
     ts_queue *q = calloc(1, sizeof(ts_queue));
     q->array = calloc(initial_size, sizeof(uthread_t *));
     q->size = initial_size;
@@ -80,4 +81,11 @@ ts_queue *ts_queue_init(unsigned int initial_size) {
     q->count = 0;
     pthread_mutex_init(&q->m, NULL);
     return q;
+}
+
+void ts_queue_free(ts_queue *q)
+{
+  free(q->array);
+  pthread_mutex_destroy(&q->m);
+  free(q);
 }

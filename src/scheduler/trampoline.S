@@ -1,7 +1,9 @@
     .global trampoline
 
 trampoline:
+    push %rax
     call enable_sigprof   # enable interrupts for this thread
+    pop %rax
     pop %rdi              # first arg = passed in void*
     pop %rax              # rax = f()
     push %rax             # alignment

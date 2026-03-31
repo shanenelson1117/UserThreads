@@ -2,8 +2,8 @@
 #include "inc/scheduler/sighandler.h"
 #include <signal.h>
 #include <stdio.h>
+#include <sys/time.h>
 
-// TODO: Pool init
 void uthread_init(int num_workers)
 {
   disable_sigprof();
@@ -17,6 +17,7 @@ void uthread_init(int num_workers)
   pthread_mutex_init(&pool_state.work_m, NULL);
   pthread_cond_init(&pool_state.work_waker, NULL);
   pthread_rwlock_init(&pool_state.shutdown_lock, NULL);
+  pool_state.shutdown = false;
 
   // Set up sigprof handler
   struct sigaction sa;
@@ -43,6 +44,7 @@ void uthread_init(int num_workers)
   // Spawn workers
   worker_spawn_args args[num_workers];
   for (int i = 0; i < num_workers; i++) {
+    pool_state.queues[i] = deque_init(MEDIUM_WL_SIZE);
     args[i].b = bar;
     args[i].worker_idx = i;
     pthread_create(&pool_state.worker_handles[i], NULL, worker_spawn, (void*) &args[i]);
@@ -50,27 +52,59 @@ void uthread_init(int num_workers)
   // Need to set up async loop thread here after blocking pool works
 
   // Wait for workers to load.
-  pthread_barrier_wait(&bar);
+  pthread_barrier_wait(bar);
   free(bar);
-}
-  // Mask sigprof
-  // set signal handlers
-  // Spawn workers
-  // Wait on barrier
-  // return
 
-// TODO: Pool shutdown
+  // Should tune this
+  struct itimerval timer;
+  timer.it_value.tv_sec = 0;
+  timer.it_value.tv_usec = 10000;  // initial delay before first signal (10ms)
+  timer.it_interval.tv_sec = 0;
+  timer.it_interval.tv_usec = 10000;  // interval between signals (10ms)
+
+  setitimer(ITIMER_PROF, &timer, NULL);
+}
+
 void uthread_shutdown()
 {
+  disable_sigprof();
 
+  pthread_rwlock_wrlock(&pool_state.shutdown_lock);
+  pool_state.shutdown = true;
+  pthread_rwlock_unlock(&pool_state.shutdown_lock);
+
+  uint64_t *exit_stacks[pool_state.num_workers];
+  for (int i = 0; i < pool_state.num_workers; i++) {
+    void *exit_stacki;
+    if (pthread_join(pool_state.worker_handles[i], &exit_stacki) == -1) {
+      printf("Failed to join worker thread with id: %d\n", i);
+      abort();
+    }
+    free(exit_stacki);
+  }
+
+  // Free after all workers are done to avoid steal based use after free
+  for (int i = 0; i < pool_state.num_workers; i++) {
+    deque_free(pool_state.queues[i]);
+  }
+
+  // Free all resources of done joinable uthreads
+  ts_queue *q = pool_state.done_threads;
+  for (int i = 0; i < q->count; i++) {
+    uthread_t *ut = q->array[(q->bottom + i) % q->size];
+    for (int i = 0; i < ut->num_old_stacks; i++) {
+      munmap(ut->old_stacks[i], ut->old_stack_sizes[i]);
+    }
+    munmap(ut->stack_base, ut->stack_size + pool_state.page_size);
+    pthread_mutex_destroy(&ut->join_m);
+    pthread_cond_destroy(&ut->join_c);
+  }
+  ts_queue_free(q);
+  ts_queue_free(pool_state.injector_q);
+  enable_sigprof();
 }
-  // Set shutdown bool
-  // Join all worker threads
-  // Clean up pool resources
-  // return
 
-
-void worker_spawn(void *args)
+void *worker_spawn(void *args)
 { 
   disable_sigprof();
   worker_spawn_args *parsed_args = (worker_spawn_args*) args;
@@ -134,7 +168,13 @@ void worker_spawn(void *args)
 // Clean up alloced resources including sigsev alternate stack (mask sigprof/sigsev before exiting)
 // pthread exit. Return pointer to exit stack so main thread can free after joining.
 void worker_exit()
-{
+{ 
+  // Disable sigaltstack before freeing
+  stack_t disable;
+  disable.ss_flags = SS_DISABLE;
+  disable.ss_sp = NULL;
+  disable.ss_size = 0;
+  sigaltstack(&disable, NULL);
   free(sigstack_base);
   // Let joiner free current stack
   pthread_exit(exit_stack);

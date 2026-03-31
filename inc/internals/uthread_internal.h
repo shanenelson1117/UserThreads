@@ -8,7 +8,6 @@ extern __thread uint64_t *exit_sp;
 extern __thread stack_t *sigsev_stack;
 extern __thread char *sigstack_base;
 
-
 typedef enum {
   READY,
   DONE,

@@ -19,7 +19,7 @@ uthreads.
 void block(spinlock *lk);
 
 // TODO: figure out how to block when waiting on an async
-// syscall. Should just pick something of the run queue and
+// syscall. Should just pick something off the run queue and
 // run it.
 void block_async();
 

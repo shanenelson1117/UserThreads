@@ -33,3 +33,5 @@ void done_push(uthread_t *t);
 uthread_t *done_pop();
 
 ts_queue *ts_queue_init(unsigned int initial_size);
+
+void ts_queue_free(ts_queue *q);
